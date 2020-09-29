@@ -20,7 +20,8 @@ from flask import current_app
 from flask_wtf import Form
 from flask_wtf.file import FileField, FileRequired
 from wtforms import IntegerField, DecimalField, TextField, BooleanField, \
-    SelectField, validators, TextAreaField, PasswordField, FieldList, SelectMultipleField
+    SelectField, validators, TextAreaField, PasswordField, FieldList, SelectMultipleField, \
+    HiddenField
 from wtforms.fields.html5 import EmailField, URLField
 from wtforms.widgets import HiddenInput
 from flask_babel import lazy_gettext, gettext
@@ -351,45 +352,47 @@ class RegisterForm(Form):
 
     """Register Form Class for creating an account in PYBOSSA."""
 
-    err_msg = lazy_gettext("Full name must be between 3 and %(fullname)s "
-                           "characters long", fullname=USER_FULLNAME_MAX_LENGTH)
-    fullname = TextField(lazy_gettext('Full name'),
-                         [validators.Length(min=3, max=USER_FULLNAME_MAX_LENGTH, message=err_msg)])
+    # err_msg = lazy_gettext("Full name must be between 3 and %(fullname)s "
+    #                        "characters long", fullname=USER_FULLNAME_MAX_LENGTH)
+    fullname = HiddenField(lazy_gettext('Full name'),
+                         [validators.Length(min=3, max=USER_FULLNAME_MAX_LENGTH)],
+                         default = "<N/A>")
 
-    err_msg = lazy_gettext("User name must be between 3 and %(username_length)s "
-                           "characters long", username_length=USER_NAME_MAX_LENGTH)
-    err_msg_2 = lazy_gettext("The user name is already taken")
-    name = TextField(lazy_gettext('User name'),
+    err_msg = lazy_gettext("Benutzername muss zwischen 3 und %(username_length)s "
+                           "Zeichen lang sein", username_length=USER_NAME_MAX_LENGTH)
+    err_msg_2 = lazy_gettext("Der Nutzername ist schon vergeben")
+    name = TextField(lazy_gettext('Benutzername'),
                          [validators.Length(min=3, max=USER_NAME_MAX_LENGTH, message=err_msg),
                           pb_validator.NotAllowedChars(),
                           pb_validator.Unique(user_repo.get_by, 'name', err_msg_2),
-                          pb_validator.ReservedName('account', current_app)])
+                          pb_validator.ReservedName('account', current_app)],
+                          description="Test")
 
-    err_msg = lazy_gettext("Email must be between 3 and %(email_length)s "
-                           "characters long", email_length=EMAIL_MAX_LENGTH)
-    err_msg_2 = lazy_gettext("Email is already taken")
-    email_addr = EmailField(lazy_gettext('Email Address'),
+    err_msg = lazy_gettext("Email-Adresse muss zwischen 3 und %(email_length)s "
+                           "lang sein", email_length=EMAIL_MAX_LENGTH)
+    err_msg_2 = lazy_gettext("Email-Adresse wird bereits verwendet")
+    email_addr = EmailField(lazy_gettext('Email-Addresse'),
                            [validators.Length(min=3,
                                               max=EMAIL_MAX_LENGTH,
                                               message=err_msg),
                             validators.Email(),
                             pb_validator.Unique(user_repo.get_by, 'email_addr', err_msg_2)])
 
-    err_msg = lazy_gettext("Password cannot be empty")
-    err_msg_2 = lazy_gettext("Passwords must match")
+    err_msg = lazy_gettext("Passwort darf nicht leer sein")
+    err_msg_2 = lazy_gettext("Passwörter müssen übereinstimmen")
     if enable_strong_password:
         password = PasswordField(
-                        lazy_gettext('New Password'),
+                        lazy_gettext('Passwort'),
                         [validators.Required(err_msg),
                             validators.EqualTo('confirm', err_msg_2),
                             pb_validator.CheckPasswordStrength()])
     else:
         password = PasswordField(
-                        lazy_gettext('New Password'),
+                        lazy_gettext('Passwort'),
                         [validators.Required(err_msg),
                             validators.EqualTo('confirm', err_msg_2)])
 
-    confirm = PasswordField(lazy_gettext('Repeat Password'))
+    confirm = PasswordField(lazy_gettext('Passwort wiederholen'))
     consent = BooleanField(false_values=("False", "false", '', '0', 0))
 
 
@@ -399,10 +402,11 @@ class UpdateProfileForm(Form):
 
     id = IntegerField(label=None, widget=HiddenInput())
 
-    err_msg = lazy_gettext("Full name must be between 3 and %(fullname)s "
-                           "characters long" , fullname=USER_FULLNAME_MAX_LENGTH)
-    fullname = TextField(lazy_gettext('Full name'),
-                         [validators.Length(min=3, max=USER_FULLNAME_MAX_LENGTH, message=err_msg)])
+    # err_msg = lazy_gettext("Full name must be between 3 and %(fullname)s "
+    #                        "characters long" , fullname=USER_FULLNAME_MAX_LENGTH)
+    fullname = HiddenField(lazy_gettext('Full name'),
+                         [validators.Length(min=3, max=USER_FULLNAME_MAX_LENGTH)],
+                         default = "<N/A>")
 
     err_msg = lazy_gettext("User name must be between 3 and %(username_length)s "
                            "characters long", username_length=USER_NAME_MAX_LENGTH)

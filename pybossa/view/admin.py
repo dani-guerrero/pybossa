@@ -16,42 +16,38 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with PYBOSSA.  If not, see <http://www.gnu.org/licenses/>.
 """Admin view for PYBOSSA."""
-import sys
-from rq import Queue
-from flask import Blueprint
-from flask import render_template
-from flask import request
-from flask import abort
-from flask import flash
-from flask import redirect
-from flask import url_for
-from flask import current_app
-from flask import Response
-from flask import Markup
-from flask_login import login_required, current_user
-from flask_babel import gettext
-from flask_wtf.csrf import generate_csrf
-from werkzeug.exceptions import HTTPException
-from sqlalchemy.exc import ProgrammingError
-import pandas as pd
-
-from pybossa.model.category import Category
-from pybossa.model.announcement import Announcement
-from pybossa.util import admin_required, handle_content_type
-from pybossa.util import redirect_content_type
-from pybossa.cache import projects as cached_projects
-from pybossa.cache import categories as cached_cat
-from pybossa.auth import ensure_authorized_to
-from pybossa.core import announcement_repo, project_repo, user_repo, sentinel
-from pybossa.feed import get_update_feed
-import pybossa.dashboard.data as dashb
-from pybossa.jobs import get_dashboard_jobs
 import json
+import sys
 from io import StringIO
 
+import pandas as pd
+import pybossa.dashboard.data as dashb
+from flask import (Blueprint, Markup, Response, abort, current_app, flash,
+                   redirect, render_template, request, url_for)
+from flask_babel import gettext
+from flask_login import current_user, login_required
+from flask_wtf.csrf import generate_csrf
+from pybossa.auth import ensure_authorized_to
+from pybossa.cache import categories as cached_cat
+from pybossa.cache import project_stats as stats
+from pybossa.cache import projects as cached_projects
+from pybossa.cache.helpers import add_custom_contrib_button_to
+from pybossa.core import announcement_repo, project_repo, sentinel, user_repo
+from pybossa.feed import get_update_feed
 from pybossa.forms.admin_view_forms import *
+from pybossa.jobs import get_dashboard_jobs
+from pybossa.model.announcement import Announcement
+from pybossa.model.category import Category
 from pybossa.news import NOTIFY_ADMIN
-
+from pybossa.util import (Pagination, admin_required, get_user_id_or_ip,
+                          handle_content_type, redirect_content_type)
+from pybossa.view.projects import (_check_if_redirect_to_password,
+                                   pro_features, project_by_shortname,
+                                   project_title, sanitize_project_owner,
+                                   zip_enabled)
+from rq import Queue
+from sqlalchemy.exc import ProgrammingError
+from werkzeug.exceptions import HTTPException
 
 blueprint = Blueprint('admin', __name__)
 
@@ -223,7 +219,6 @@ def add_admin(user_id=None):
     except Exception as e:  # pragma: no cover
         current_app.logger.error(e)
         return abort(500)
-
 
 @blueprint.route('/users/del/<int:user_id>')
 @login_required
@@ -480,6 +475,61 @@ def delete_announcement(id):
     markup = Markup('<i class="icon-ok"></i> {}')
     flash(markup.format(msg_1), 'success')
     return redirect_content_type(url_for('admin.announcement'))
+
+
+
+@blueprint.route('/validation')
+@blueprint.route('/validation/<int:page>')
+@login_required
+@admin_required
+def validation(page=1):
+    """Manage validations."""
+    # response = dict(template='admin/validation.html',
+    #                 title=gettext("Manage validations"),
+    #                 csrf=generate_csrf())
+    # return handle_content_type(response)
+    project, owner, ps = project_by_shortname("frd")
+    title = project_title(project, "Tasks")
+    pro = pro_features()
+
+    def respond():
+        per_page = 100
+        offset = (page - 1) * per_page
+        count = ps.n_tasks
+        page_tasks = cached_projects.browse_tasks_validation(project.get('id'), per_page, offset, min_n_answers=3)
+
+        pagination = Pagination(page, per_page, count)
+
+        project_sanitized, owner_sanitized = sanitize_project_owner(project,
+                                                                    owner,
+                                                                    current_user,
+                                                                    ps)
+
+        data = dict(template='admin/validation.html',
+                    project=project_sanitized,
+                    owner=owner_sanitized,
+                    tasks=page_tasks,
+                    title=title,
+                    pagination=pagination,
+                    n_tasks=ps.n_tasks,
+                    overall_progress=ps.overall_progress,
+                    n_volunteers=ps.n_volunteers,
+                    n_completed_tasks=ps.n_completed_tasks,
+                    pro_features=pro)
+
+        return handle_content_type(data)
+
+    if project.needs_password():
+        redirect_to_password = _check_if_redirect_to_password(project)
+        if redirect_to_password:
+            return redirect_to_password
+    else:
+        ensure_authorized_to('read', project)
+
+    zip_enabled(project, current_user)
+
+    project = add_custom_contrib_button_to(project, get_user_id_or_ip())
+    return respond()
 
 
 @blueprint.route('/dashboard/')

@@ -76,6 +76,38 @@ def after_save(task_run, conn):
         release_lock(task_run.task_id, uid, TIMEOUT)
 
 
+# def get_breadth_first_task(project_id, user_id=None, user_ip=None,
+#                            external_uid=None, offset=0, limit=1, orderby='n_task_runs', desc=False):
+#     """Get a new task which have the least number of task runs."""
+#     project_query = session.query(Task.id).filter(Task.project_id==project_id,
+#                                                   Task.state!='completed')
+#     if user_id and not user_ip and not external_uid:
+#         subquery = session.query(TaskRun.task_id).filter_by(project_id=project_id,
+#                                                             user_id=user_id)
+#     else:
+#         if not user_ip:  # pragma: no cover
+#             user_ip = '127.0.0.1'
+#         if user_ip and not external_uid:
+#             subquery = session.query(TaskRun.task_id).filter_by(project_id=project_id,
+#                                                                 user_ip=user_ip)
+#         else:
+#             subquery = session.query(TaskRun.task_id).filter_by(project_id=project_id,
+#                                                                 external_uid=external_uid)
+
+#     tmp = project_query.except_(subquery)
+    
+#     # avoid tasks in validation state
+#     query = session.query(Task, func.sum(Counter.n_task_runs).label('n_task_runs'))\
+#                    .filter(Task.id==Counter.task_id)\
+#                    .filter(Counter.task_id.in_(tmp))\
+#                    .filter(Task.n_answers <= 2)\
+#                    .group_by(Task.id)\
+
+#     query = _set_orderby_desc(query, orderby, desc)
+  
+#     data = query.limit(limit).offset(offset).all()
+#     return _handle_tuples(data)
+
 def get_breadth_first_task(project_id, user_id=None, user_ip=None,
                            external_uid=None, offset=0, limit=1, orderby='id', desc=False):
     """Get a new task which have the least number of task runs."""
@@ -98,11 +130,18 @@ def get_breadth_first_task(project_id, user_id=None, user_ip=None,
     query = session.query(Task, func.sum(Counter.n_task_runs).label('n_task_runs'))\
                    .filter(Task.id==Counter.task_id)\
                    .filter(Counter.task_id.in_(tmp))\
+                   .filter(Task.n_answers <= 2)\
                    .group_by(Task.id)\
-                   .order_by(text('n_task_runs ASC'))\
+                   .order_by(text('n_task_runs DESC'))\
+
+    # define new random offset
+    rowCount = int(query.count())
+    rand_offset = random.randrange(0, min(150,rowCount-1))
+    offset = int(rand_offset)
 
     query = _set_orderby_desc(query, orderby, desc)
     data = query.limit(limit).offset(offset).all()
+
     return _handle_tuples(data)
 
 

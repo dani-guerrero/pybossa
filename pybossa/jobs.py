@@ -755,11 +755,12 @@ def news():
 
 def check_failed():
     """Check the jobs that have failed and requeue them."""
-    from rq import Queue, get_failed_queue, requeue_job
+    from rq import Queue, requeue_job
     from pybossa.core import sentinel
 
-    fq = get_failed_queue()
-    job_ids = fq.job_ids
+    queue = Queue(connection=sentinel.master)
+    fq = queue.failed_job_registry
+    job_ids = fq.get_job_ids()
     count = len(job_ids)
     FAILED_JOBS_RETRIES = current_app.config.get('FAILED_JOBS_RETRIES')
     for job_id in job_ids:

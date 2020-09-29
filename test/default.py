@@ -291,7 +291,7 @@ class Test(object):
         db.session.commit()
 
     def redis_flushall(self):
-        sentinel.connection.master_for('mymaster').flushall()
+        sentinel.connection.master_for('redis-master').flushall()
 
 class Fixtures:
     fullname = 'T Tester'
@@ -460,7 +460,7 @@ class Fixtures:
 
     @classmethod
     def redis_flushall(cls):
-        sentinel.connection.master_for('mymaster').flushall()
+        sentinel.connection.master_for('redis-master').flushall()
 
 def assert_not_raises(exception, call, *args, **kwargs):
     try:

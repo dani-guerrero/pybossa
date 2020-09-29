@@ -66,6 +66,16 @@ def tos():
     return handle_content_type(response)
 
 
+@blueprint.route('/imprint')
+def imprint():
+    """Render imprint page."""
+    cleaned_up_content = Document(render_template('help/imprint.html')).summary()
+    response = dict(template='help/imprint.html',
+                    content=cleaned_up_content,
+                    title='Help: Imprint')
+    return handle_content_type(response)
+
+
 @blueprint.route('/cookies-policy')
 def cookies_policy():
     """Render help/cookies-policy page."""

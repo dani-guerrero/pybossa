@@ -51,18 +51,40 @@ def get_top(n=4):
     return top_projects
 
 
-def browse_tasks(project_id, limit=10, offset=0):
+def browse_tasks(project_id, limit=10, offset=0, min_n_answers=0):
     """Cache browse tasks view for a project."""
     sql = text('''
                SELECT task.id, task.n_answers, sum(counter.n_task_runs) as n_task_runs
                FROM task, counter
-               WHERE task.id=counter.task_id and task.project_id=:project_id
+               WHERE task.id=counter.task_id and task.project_id=:project_id and task.n_answers >= :min_n_answers
                GROUP BY task.id
                ORDER BY task.id ASC LIMIT :limit OFFSET :offset
                ''')
     results = session.execute(sql, dict(project_id=project_id,
                                         limit=limit,
-                                        offset=offset))
+                                        offset=offset,
+                                        min_n_answers=min_n_answers))
+    tasks = []
+    for row in results:
+        task = dict(id=row.id, n_task_runs=row.n_task_runs,
+                    n_answers=row.n_answers)
+        task['pct_status'] = _pct_status(row.n_task_runs, row.n_answers)
+        tasks.append(task)
+    return tasks
+
+def browse_tasks_validation(project_id, limit=10, offset=0, min_n_answers=0):
+    """Cache browse tasks view for a project."""
+    sql = text('''
+               SELECT task.id, task.n_answers, sum(counter.n_task_runs) as n_task_runs
+               FROM task, counter
+               WHERE task.id=counter.task_id and task.project_id=:project_id and task.n_answers >= :min_n_answers and task.state not like 'completed'
+               GROUP BY task.id
+               ORDER BY task.id ASC LIMIT :limit OFFSET :offset
+               ''')
+    results = session.execute(sql, dict(project_id=project_id,
+                                        limit=limit,
+                                        offset=offset,
+                                        min_n_answers=min_n_answers))
     tasks = []
     for row in results:
         task = dict(id=row.id, n_task_runs=row.n_task_runs,

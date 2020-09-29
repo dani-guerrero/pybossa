@@ -58,7 +58,11 @@ class TaskRunAPI(APIBase):
         guard = ContributionsGuard(sentinel.master)
 
         self._validate_project_and_task(taskrun, task)
-        self._ensure_task_was_requested(task, guard)
+        
+        if current_user.is_anonymous or (
+            current_user.is_authenticated and (current_user.admin is False)
+        ):
+            self._ensure_task_was_requested(task, guard)
         self._add_user_info(taskrun)
         self._add_created_timestamp(taskrun, task, guard)
 

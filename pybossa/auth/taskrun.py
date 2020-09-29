@@ -49,8 +49,16 @@ class TaskRunAuth(object):
             user_ip=taskrun.user_ip,
             external_uid=taskrun.external_uid) <= 0
 
+        #  when n_answers > 2: only allow admins
+        task = self.task_repo.get_task_by(id=taskrun.task_id)
+        # import logging
+        # _logger = [logging.getLogger(name) for name in logging.root.manager.loggerDict if "flask.app" in name][0]
+        # _logger.info(str(dir(user)))
+        authorized = (authorized and task.n_answers <= 2) or (task.n_answers >= 3 and (not user.is_anonymous) and user.admin)
+
         if not authorized:
             raise abort(403)
+
         return authorized
 
     def _read(self, user, taskrun=None):

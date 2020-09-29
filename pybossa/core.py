@@ -19,6 +19,7 @@
 import os
 import logging
 import humanize
+import time
 from flask import Flask, url_for, request, render_template, \
     flash, _app_ctx_stack, abort, redirect
 from flask_login import current_user
@@ -287,7 +288,7 @@ def setup_babel(app):
             lang = request.accept_languages.best_match(locales)
         if (lang is None or lang == '' or
                 lang.lower() not in locales):
-            lang = app.config.get('DEFAULT_LOCALE') or 'en'
+            lang = app.config.get('DEFAULT_LOCALE') or 'de'
         if request.headers.get('Content-Type') == 'application/json':
             lang = 'en'
         return lang.lower()
@@ -326,7 +327,7 @@ def setup_blueprints(app):
 
     # from rq_dashboard import RQDashboard
     import rq_dashboard
-    app.config.from_object(rq_dashboard.default_settings)
+    # app.config.from_object(rq_dashboard.default_settings)
     rq_dashboard.blueprint.before_request(is_admin)
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/admin/rq",
                            redis_conn=sentinel.master)
@@ -687,6 +688,17 @@ def setup_scheduled_jobs(app):  # pragma: no cover
         get_quarterly_date
     from rq_scheduler import Scheduler
     redis_conn = sentinel.master
+
+    while True:
+        try:
+            app.logger.info("Trying to ping redis server...")
+            redis_conn.ping()
+            app.logger.info("...Success")
+            break
+        except:
+            app.logger.info("Could not ping redis server")
+            time.sleep(1)
+
     scheduler = Scheduler(queue_name='scheduled_jobs', connection=redis_conn)
     MINUTE = 60
     HOUR = 60 * 60
@@ -713,7 +725,8 @@ def setup_scheduled_jobs(app):  # pragma: no cover
                  scheduled_time=first_quaterly_execution)]
 
     for job in JOBS:
-        schedule_job(job, scheduler)
+        msg = schedule_job(job, scheduler)
+        app.logger.info(msg)
 
 
 def setup_newsletter(app):

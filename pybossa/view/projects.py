@@ -807,8 +807,18 @@ def password_required(short_name):
 def task_presenter(short_name, task_id):
     project, owner, ps = project_by_shortname(short_name)
     task = task_repo.get_task(id=task_id)
+
     if task is None:
         raise abort(404)
+
+    # import logging
+    # _logger = [logging.getLogger(name) for name in logging.root.manager.loggerDict if "flask.app" in name][0]
+    # _logger.info(task.__dict__)
+
+    # avoid more task runs then allowed
+    if task.state == "completed" and (current_user.is_anonymous or (current_user.admin is False)):
+        raise abort(403)
+
     if project.needs_password():
         redirect_to_password = _check_if_redirect_to_password(project)
         if redirect_to_password:
@@ -826,11 +836,8 @@ def task_presenter(short_name, task_id):
                                     next=url_for('.presenter',
                                     short_name=project.short_name)))
         else:
-            msg_1 = gettext(
-                "Ooops! You are an anonymous user and will not "
-                "get any credit"
-                " for your contributions.")
-            msg_2 = gettext('Sign in now!')
+            msg_1 = gettext("Du trägst anonym zur Fahrradzählung bei.")
+            msg_2 = gettext('')
             next_url = url_for('project.task_presenter',
                                 short_name=short_name, task_id=task_id)
             url = url_for('account.signin', next=next_url)
@@ -900,9 +907,7 @@ def presenter(short_name):
                         next=url_for('.presenter',
                                      short_name=project.short_name)))
 
-    msg = "Ooops! You are an anonymous user and will not \
-           get any credit for your contributions. Sign in \
-           now!"
+    msg = "Du trägst anonym zur Fahrradzählung bei."
 
     if project.info.get("tutorial") and \
             request.cookies.get(project.short_name + "tutorial") is None:

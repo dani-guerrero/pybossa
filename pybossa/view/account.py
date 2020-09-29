@@ -322,7 +322,7 @@ def register():
         form = RegisterFormWithUserPrefMetadata(request.body)
         form.set_upref_mdata_choices()
 
-    msg = "I accept receiving emails from %s" % current_app.config.get('BRAND')
+    msg = "Ich bin damit einverstanden Emails zu erhalten, welche über die Registrierungsbestätigung hinaus gehen. (optional)"
     form.consent.label = msg
     if request.method == 'POST' and form.validate():
         if current_app.config.upref_mdata:
