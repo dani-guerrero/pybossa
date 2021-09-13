@@ -62,6 +62,7 @@ from pybossa.core import project_repo, task_repo
 from pybossa.contributions_guard import ContributionsGuard
 from pybossa.auth import jwt_authorize_project
 from werkzeug.exceptions import MethodNotAllowed
+import requests
 
 blueprint = Blueprint('api', __name__)
 
@@ -113,7 +114,26 @@ register_api(FavoritesAPI, 'api_favorites', '/favorites',
              pk='oid', pk_type='int')
 register_api(TokenAPI, 'api_token', '/token', pk='token', pk_type='string')
 
+supported_languages = [
+    'es','ca','de','sq','el','hu','pt','sl','it','fr',
+    'bg','ro','hr','mk','sr','lb','nl','tr','zh-CN']
 
+
+# def _solve_tree(task):
+    # questions = task['questions']
+    # answers = _get_answers(task['id'])
+    # node = questions.root.branch
+# #  remove completed parents
+    # finish = False
+    # while not finish:
+        # finish = True
+        # for answer in node:
+            # if node.n_answers <= count_answers(answer, answers):
+                # node = node.branch['answer']
+                # finish = False
+# 
+    # return questions
+#def _translate()
 @jsonpify
 @blueprint.route('/project/<project_id>/newtask')
 @ratelimit(limit=ratelimits.get('LIMIT'), per=ratelimits.get('PER'))
@@ -132,6 +152,14 @@ def new_task(project_id):
             for task in tasks:
                 guard.stamp(task, get_user_id_or_ip())
             data = [task.dictize() for task in tasks]
+            for task in data:
+                #task['prova'] = solve_tree(task)
+                lang = request.accept_languages.best_match(supported_languages)
+                task['lang']=lang
+                questions = requests.get('https://raw.githubusercontent.com/dani-guerrero/data/main/questions_001.json').text
+                answers = requests.get('https://raw.githubusercontent.com/dani-guerrero/data/main/answers_001.json').text
+                task['info']['questions']=questions
+                #questions = _translate(questions, lang)
             if len(data) == 0:
                 response = make_response(json.dumps({}))
             elif len(data) == 1:
